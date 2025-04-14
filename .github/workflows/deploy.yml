@@ -10,28 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.AZURE_VM_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.AZURE_VM_IP }} >> ~/.ssh/known_hosts
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_VM_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AZURE_VM_IP }} >> ~/.ssh/known_hosts
 
-    - name: Deploy code via SSH
-      run: |
-        ssh ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_IP }} << 'EOF'
-          # Create app directory if it doesn't exist
-          mkdir -p ~/flask-app
-          cd ~/flask-app
+      - name: Deploy code via SSH
+        run: |
+          ssh ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_IP }} << 'EOF'
+            mkdir -p ~/flask-app
+            cd ~/flask-app
 
-          # Clean up old files
-          rm -f app.py requirements.txt
+            rm -f app.py requirements.txt
 
-          # Create app.py
-          cat > app.py <<'APP'
+            cat > app.py << 'APP'
 from flask import Flask
 app = Flask(__name__)
 @app.route('/')
@@ -41,18 +38,13 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
 APP
 
-          # Create requirements file
-          echo "flask" > requirements.txt
+            echo "flask" > requirements.txt
 
-          # Set up Python environment and install dependencies
-          python3 -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
 
-          # Kill any running Flask app
-          sudo pkill -f app.py || true
-
-          # Start app in background
-          nohup venv/bin/python app.py > app.log 2>&1 &
-        EOF
+            sudo pkill -f app.py || true
+            nohup venv/bin/python app.py > app.log 2>&1 &
+          EOF
