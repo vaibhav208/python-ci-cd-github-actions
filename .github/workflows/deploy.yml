@@ -23,25 +23,36 @@ jobs:
     - name: Deploy code via SSH
       run: |
         ssh ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_IP }} << 'EOF'
-          cd ~/flask-app || mkdir ~/flask-app && cd ~/flask-app
+          # Create app directory if it doesn't exist
+          mkdir -p ~/flask-app
+          cd ~/flask-app
+
+          # Clean up old files
           rm -f app.py requirements.txt
-          cat > app.py <<APP
-          from flask import Flask
-          app = Flask(__name__)
 
-          @app.route('/')
-          def home():
-              return "Hello from Flask deployed via GitHub Actions!"
+          # Create app.py
+          cat > app.py <<'APP'
+from flask import Flask
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Hello from Flask deployed via GitHub Actions!"
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+APP
 
-          if __name__ == '__main__':
-              app.run(host='0.0.0.0', port=5000)
-          APP
-
+          # Create requirements file
           echo "flask" > requirements.txt
+
+          # Set up Python environment and install dependencies
           python3 -m venv venv
           source venv/bin/activate
+          pip install --upgrade pip
           pip install -r requirements.txt
+
+          # Kill any running Flask app
           sudo pkill -f app.py || true
+
+          # Start app in background
           nohup venv/bin/python app.py > app.log 2>&1 &
         EOF
-
